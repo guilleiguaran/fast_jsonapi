@@ -50,8 +50,10 @@ module FastJsonapi
 
       return serializable_hash unless @resource
 
-      serializable_hash[:data] = self.class.record_hash(@resource)
-      serializable_hash[:included] = self.class.get_included_records(@resource, @includes, @known_included_objects) if @includes.present?
+      serializable_object = use_decorator? ? self.class.new(@resource) : @resource
+
+      serializable_hash[:data] = self.class.record_hash(serializable_object)
+      serializable_hash[:included] = self.class.get_included_records(serializable_object, @includes, @known_included_objects) if @includes.present?
       serializable_hash
     end
 
@@ -61,8 +63,9 @@ module FastJsonapi
       data = []
       included = []
       @resource.each do |record|
-        data << self.class.record_hash(record)
-        included.concat self.class.get_included_records(record, @includes, @known_included_objects) if @includes.present?
+        serializable_object = use_decorator? ? self.class.new(record) : record
+        data << self.class.record_hash(serializable_object)
+        included.concat self.class.get_included_records(serializable_object, @includes, @known_included_objects) if @includes.present?
       end
 
       serializable_hash[:data] = data
@@ -76,6 +79,10 @@ module FastJsonapi
     end
 
     private
+
+    def use_decorator?
+      @use_decorator = (self.class.instance_methods(false) & self.class.attributes_to_serialize.keys).any? if @use_decorator.nil?
+    end
 
     def process_options(options)
       return if options.blank?

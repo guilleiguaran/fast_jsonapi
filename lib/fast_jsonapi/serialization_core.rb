@@ -16,6 +16,18 @@ module FastJsonapi
       end
     end
 
+    def object
+      @resource
+    end
+
+    def method_missing(method, *args)
+      if @resource && @resource.respond_to?(method)
+        @resource.public_send(method, *args)
+      else
+        super
+      end
+    end
+
     class_methods do
       def id_hash(id, record_type)
         return { id: id.to_s, type: record_type } if id.present?
