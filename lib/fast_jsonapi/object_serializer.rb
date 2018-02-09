@@ -31,10 +31,24 @@ module FastJsonapi
       set_type(reflected_record_type) if reflected_record_type
     end
 
+    attr_writer :resource
+
     def initialize(resource, options = {})
       process_options(options)
 
       @resource = resource
+    end
+
+    def object
+      @resource
+    end
+
+    def method_missing(method, *args)
+      if @resource && @resource.respond_to?(method)
+        @resource.public_send(method, *args)
+      else
+        super
+      end
     end
 
     def serializable_hash
@@ -48,8 +62,7 @@ module FastJsonapi
       serializable_hash[:meta] = @meta if @meta.present?
 
       return serializable_hash unless @resource
-
-      serializable_hash[:data] = self.class.record_hash(@resource)
+      serializable_hash[:data] = self.class.record_hash(self)
       serializable_hash[:included] = self.class.get_included_records(@resource, @includes, @known_included_objects) if @includes.present?
       serializable_hash
     end
@@ -59,15 +72,22 @@ module FastJsonapi
 
       data = []
       included = []
+      serializer = self.class.new([])
       @resource.each do |record|
-        data << self.class.record_hash(record)
-        included.concat self.class.get_included_records(record, @includes, @known_included_objects) if @includes.present?
+        serializer.resource = record
+        data << self.class.record_hash(serializer)
+        included.concat self.class.get_included_records(serializer, @includes, @known_included_objects) if @includes.present?
+        serializer.reset_instance_variables
       end
 
       serializable_hash[:data] = data
       serializable_hash[:included] = included if @includes.present?
       serializable_hash[:meta] = @meta if @meta.present?
       serializable_hash
+    end
+
+    def reset_instance_variables
+      instance_variables.each { |v| instance_variable_set(v, nil) }
     end
 
     def serialized_json

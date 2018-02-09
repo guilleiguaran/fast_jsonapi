@@ -107,6 +107,16 @@ RSpec.shared_context 'movie class' do
       set_type :account
       belongs_to :supplier
     end
+
+    class MovieSerializerWithCustomMethod
+      include FastJsonapi::ObjectSerializer
+      set_type :movie
+      attributes :name, :release_year, :title_with_year
+
+      def title_with_year
+        "#{object.name} (#{object.release_year})"
+      end
+    end
   end
 
 
